@@ -1,36 +1,37 @@
 import feedparser
 import pandas as pd
-from datetime import datetime
-import os
+import datetime
+import urllib.parse
 
 def get_tea_topics():
-    # 「茶 研究」のGoogleニュースRSS（スクレイピングより安定かつ規約に安全）
-    query = "茶 研究"
-    url = f"https://news.google.com/rss/search?q={query}&hl=ja&gl=JP&ceid=JP:ja"
+    # 検索キーワードを「茶 研究」に設定
+    keyword = "茶 研究"
+    # キーワードをURL用に安全な文字列（エンコード）に変換
+    encoded_keyword = urllib.parse.quote(keyword)
     
+    # GoogleニュースのRSS URL（スペース問題を回避した形式）
+    url = f"https://news.google.com/rss/search?q={encoded_keyword}&hl=ja&gl=JP&ceid=JP:ja"
+    
+    # ニュースを取得
     feed = feedparser.parse(url)
-    entries = []
-
+    
+    topics = []
     for entry in feed.entries:
-        entries.append({
-            "published": entry.published,
+        topics.append({
             "title": entry.title,
             "link": entry.link,
-            "source": entry.source.title
+            "published": entry.published
         })
-
-    df_new = pd.DataFrame(entries)
-
-    # データの保存（重複を除去して蓄積）
-    file_name = "tea_topics.csv"
-    if os.path.exists(file_name):
-        df_old = pd.read_csv(file_name)
-        df_final = pd.concat([df_old, df_new]).drop_duplicates(subset=['link'], keep='first')
+    
+    # データフレームに変換
+    df = pd.DataFrame(topics)
+    
+    # 現在の日付を取得してファイル名に含める、または上書き保存
+    if not df.empty:
+        df.to_csv("tea_topics.csv", index=False, encoding="utf-8-sig")
+        print("CSVファイルを作成しました。")
     else:
-        df_final = df_new
-
-    df_final.to_csv(file_name, index=False, encoding="utf-8-sig")
-    print(f"{datetime.now()}: {len(df_new)}件取得しました。")
+        print("新しいトピックは見つかりませんでした。")
 
 if __name__ == "__main__":
     get_tea_topics()
